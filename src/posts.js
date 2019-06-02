@@ -128,7 +128,7 @@ const finiteScroll = async (pageData, page, request, length = 0) => {
         if (!timeline.hasNextPage) return;
     }
 
-    if (posts[pageData.id].length < request.userData.limit && posts[pageData.id].length !== length) {
+    if ((request.userData.limit === -1 || posts[pageData.id].length < request.userData.limit) && posts[pageData.id].length !== length) {
         await finiteScroll(pageData, page, request, posts[pageData.id].length)
     }
 };
@@ -154,7 +154,7 @@ const scrapePosts = async (page, request, itemSpec, entryData) => {
 
     await page.waitFor(500);
 
-    if (initData[itemSpec.id].hasNextPage && posts[itemSpec.id].length < request.userData.limit) {
+    if (initData[itemSpec.id].hasNextPage && (request.userData.limit === -1 || posts[itemSpec.id].length < request.userData.limit)) {
         await page.waitFor(1000);
         await finiteScroll(itemSpec, page, request, posts);
     }
@@ -175,9 +175,11 @@ const scrapePosts = async (page, request, itemSpec, entryData) => {
         timestamp: new Date(parseInt(item.node.taken_at_timestamp) * 1000),
         locationName: item.node.location && item.node.location.name || null,
         ownerUsername: item.node.owner && item.node.owner.username || null,
-    })).slice(0, request.userData.limit);
+    })).slice(0, request.userData.limit === -1 ? posts[itemSpec.id].length : request.userData.limit);
 
-    await Apify.pushData(output);
+    const dataset = await Apify.openDataset('instagram-posts');
+
+    await dataset.pushData(output);
     log(itemSpec, `${output.length} items saved, task finished`);
 }
 

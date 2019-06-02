@@ -92,7 +92,7 @@ const finiteScroll = async (pageData, page, request, length = 0) => {
         if (!timeline.hasNextPage) return;
     }
 
-    if (comments[pageData.id].length < request.userData.limit && comments[pageData.id].length !== length) {
+    if ((request.userData.limit === -1 || comments[pageData.id].length < request.userData.limit) && comments[pageData.id].length !== length) {
         await finiteScroll(pageData, page, request, comments[pageData.id].length)
     }
 };
@@ -121,7 +121,7 @@ const scrapeComments = async (page, request, itemSpec, entryData) => {
 
     await page.waitFor(500);
 
-    if (initData[itemSpec.id].hasNextPage && comments[itemSpec.id].length < request.userData.limit) {
+    if (initData[itemSpec.id].hasNextPage && (request.userData.limit === -1 || comments[itemSpec.id].length < request.userData.limit)) {
         await page.waitFor(1000);
         await finiteScroll(itemSpec, page, request);
     }
@@ -139,9 +139,11 @@ const scrapeComments = async (page, request, itemSpec, entryData) => {
         ownerIsVerified: item.node.owner ? item.node.owner.is_verified : null, 
         ownerUsername: item.node.owner ? item.node.owner.username : null, 
         ownerProfilePicUrl: item.node.owner ? item.node.owner.profile_pic_url : null, 
-    })).slice(0, request.userData.limit);
+    })).slice(0, request.userData.limit === -1 ? comments[itemSpec.id].length : request.userData.limit);
 
-    await Apify.pushData(output);
+    const dataset = await Apify.openDataset('instagram-comments');
+    
+    await dataset.pushData(output);
     log(itemSpec, `${output.length} items saved, task finished`);
 }
 
