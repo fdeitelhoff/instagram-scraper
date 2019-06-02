@@ -163,7 +163,9 @@ const getOutputFromEntryData = (pageType, request, data) => {
 // Takes correct variable from window object and formats it into proper output
 const scrapeDetails = async (request, itemSpec, entryData) => {
     const output = getOutputFromEntryData(itemSpec.pageType, request, entryData);
-    await Apify.pushData(output);
+    const dataset = await Apify.openDataset('instagram-details');
+
+    await dataset.pushData(output);
     log(itemSpec, `Page details saved, task finished`);
 };
 
