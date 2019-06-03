@@ -4,8 +4,9 @@ const sleep = require('sleep');
 
 const start = async function(purgeData) {
     const proxies = [];
-    proxies.push({ host: '88.204.214.122', port: 8080 });
+    // proxies.push({ host: '117.191.11.101', port: 80 });
     proxies.push({ host: '59.153.100.84', port: 80 });
+    // proxies.push({ host: '185.132.133.180', port: 8080 });
 
     console.log('Starting scraping comments and likes for posts...');
 
@@ -54,7 +55,7 @@ const start = async function(purgeData) {
         processedShortcodes.shift();
     }
 
-    // let i = 0;
+    let i = 1;
     let rawdata = fs.readFileSync('./data/dataset_posts.json');
     let posts = JSON.parse(rawdata);
 
@@ -71,26 +72,35 @@ const start = async function(purgeData) {
             continue;
         }
 
-        console.log(`Getting comments and likes for post ${postInfo.shortcode}...`);
+        console.log(`Getting comments for post ${postInfo.shortcode}...`);
 
         // FD: Getting a random proxy.
         const commentProxy = proxies[randomIntFromInterval(0, proxies.length - 1)];
+        console.log(`Using Proxy ${commentProxy.host}...`);
         await getComments(commentProxy, postInfo);
 
         // FD: Randomly waiting...
-        sleep.sleep(randomIntFromInterval(1, 5));
+        if (i % 6 == 0) {
+            const sleeping = randomIntFromInterval(120, 240);
+            console.log(`Waiting for ${sleeping} secs...`);
+            sleep.sleep(sleeping);
+            i = 0;
+        } else {
+            const sleeping = randomIntFromInterval(3, 6);
+            console.log(`Waiting for ${sleeping} secs...`);
+            sleep.sleep(sleeping);
+        }
+
+        console.log(`Getting likes for post ${postInfo.shortcode}...`);
 
         // FD: Getting a random proxy.
         const likeProxy = proxies[randomIntFromInterval(0, proxies.length - 1)];
+        console.log(`Using Proxy ${likeProxy.host}...`);
         await getLikes(likeProxy, postInfo);
 
         saveData(postInfo);
 
-        // if (i == 0) {
-        //     break;
-        // }
-
-        // i++;
+        i++;
     }
 
     function saveData(postWithComments) {
@@ -119,13 +129,17 @@ const start = async function(purgeData) {
 
     async function getComments(proxy, postInfo, hasNextPage = false, endCursor = '') {
         // FD: Randomly waiting...
-        sleep.sleep(randomIntFromInterval(1, 2));
+        const sleeping = randomIntFromInterval(1, 2);
+        sleep.sleep(sleeping);
+
+        // FD: How many elements should be selected (randomly).
+        const firstElements = randomIntFromInterval(30, 50);
 
         let url = '';
         if (!hasNextPage) {
-            url = `https://www.instagram.com/graphql/query/?query_hash=97b41c52301f77ce508f55e66d17620e&variables={"shortcode":"${postInfo.shortcode}","first":24}`;
+            url = `https://www.instagram.com/graphql/query/?query_hash=97b41c52301f77ce508f55e66d17620e&variables={"shortcode":"${postInfo.shortcode}","first":${firstElements}}`;
         } else {
-            url = `https://www.instagram.com/graphql/query/?query_hash=97b41c52301f77ce508f55e66d17620e&variables={"shortcode":"${postInfo.shortcode}","first":24,"after":"${endCursor}"}`;
+            url = `https://www.instagram.com/graphql/query/?query_hash=97b41c52301f77ce508f55e66d17620e&variables={"shortcode":"${postInfo.shortcode}","first":${firstElements},"after":"${endCursor}"}`;
         }
 
         const response = await axios.get(url, {
@@ -138,7 +152,7 @@ const start = async function(purgeData) {
         postInfo.commentCountWithAnswers = data.count;
         postInfo.commentCount += data.edges.length;
 
-        console.log(`Getting next ${data.edges.length} comments for post ${postInfo.shortcode}...`);
+        console.log(`(${sleeping}s): Getting next ${data.edges.length} comments for post ${postInfo.shortcode}...`);
 
         for (const edge of data.edges) {
             const comment = { id: edge.node.id, text: edge.node.text, created_at: edge.node.created_at,
@@ -153,13 +167,17 @@ const start = async function(purgeData) {
 
     async function getLikes(proxy, postInfo, hasNextPage = false, endCursor = '') {
         // FD: Randomly waiting...
-        sleep.sleep(randomIntFromInterval(1, 2));
+        const sleeping = randomIntFromInterval(1, 2);
+        sleep.sleep(sleeping);
+
+        // FD: How many elements should be selected (randomly).
+        const firstElements = randomIntFromInterval(30, 50);
 
         let url = '';
         if (!hasNextPage) {
-            url = `https://www.instagram.com/graphql/query/?query_hash=d5d763b1e2acf209d62d22d184488e57&variables={"shortcode":"${postInfo.shortcode}","first":24}`;
+            url = `https://www.instagram.com/graphql/query/?query_hash=d5d763b1e2acf209d62d22d184488e57&variables={"shortcode":"${postInfo.shortcode}","first":${firstElements}}`;
         } else {
-            url = `https://www.instagram.com/graphql/query/?query_hash=d5d763b1e2acf209d62d22d184488e57&variables={"shortcode":"${postInfo.shortcode}","first":24,"after":"${endCursor}"}`;
+            url = `https://www.instagram.com/graphql/query/?query_hash=d5d763b1e2acf209d62d22d184488e57&variables={"shortcode":"${postInfo.shortcode}","first":${firstElements},"after":"${endCursor}"}`;
         }
 
         const response = await axios.get(url, {
@@ -170,7 +188,7 @@ const start = async function(purgeData) {
         const data = response.data.data.shortcode_media.edge_liked_by;
         postInfo.likedByCount += data.edges.length;
 
-        console.log(`Getting next ${data.edges.length} likes for post ${postInfo.shortcode}...`);
+        console.log(`(${sleeping}s): Getting next ${data.edges.length} likes for post ${postInfo.shortcode}...`);
 
         for (const edge of data.edges) {
             const like = {
@@ -185,7 +203,9 @@ const start = async function(purgeData) {
     }
 
     function randomIntFromInterval(min, max) { // min and max included
-        return Math.floor(Math.random() * (max - min + 1) + min);
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min; 
     }
 }
 
