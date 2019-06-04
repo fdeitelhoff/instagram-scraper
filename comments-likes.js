@@ -2,6 +2,9 @@ const fs = require('fs');
 const axios = require('axios');
 const sleep = require('sleep');
 
+let commentCount = 0;
+let likeCount = 0;
+
 const start = async function(purgeData) {
     const proxies = [];
     // proxies.push({ host: '117.191.11.101', port: 80 });
@@ -13,38 +16,25 @@ const start = async function(purgeData) {
     if (purgeData) {
         console.log('Purging data due to command line argument...');
 
-        fs.exists('./data/dataset_post_comments.csv', (exists) => {
-            if (exists) {
-                fs.unlinkSync('./data/dataset_post_comments.csv');
-            }
-        });
+        if (fs.existsSync('./data/dataset_post_comments.csv')) {
+            fs.unlinkSync('./data/dataset_post_comments.csv');
+        }
 
-        fs.exists('./data/dataset_post_likes.csv', (exists) => {
-            if (exists) {
-                fs.unlinkSync('./data/dataset_post_likes.csv');
-            }
-        });  
+        if (fs.existsSync('./data/dataset_post_likes.csv')) {
+            fs.unlinkSync('./data/dataset_post_likes.csv');
+        }  
         
-        fs.exists('./data/processed_shortcodes.csv', (exists) => {
-            if (exists) {
-                fs.unlinkSync('./data/processed_shortcodes.csv');
-            }
-        }); 
+        if (fs.existsSync('./data/processed_shortcodes.csv')) {
+            fs.unlinkSync('./data/processed_shortcodes.csv');
+        } 
 
-        fs.appendFile('./data/dataset_post_comments.csv',
-            `username;shortcode;commentCount;commentCountWithAnswers;comment_id;text;created_at;ownerId;ownerUsername\n`, (err) => {
-                if (err) throw err;
-            });
+        fs.appendFileSync('./data/dataset_post_comments.csv',
+            `username;shortcode;commentCount;commentCountWithAnswers;comment_id;text;created_at;ownerId;ownerUsername\n`);
 
-        fs.appendFile('./data/dataset_post_likes.csv',
-            `username;shortcode;likedByCount;ownerId;username;full_name\n`, (err) => {
-                if (err) throw err;
-            });    
+        fs.appendFileSync('./data/dataset_post_likes.csv',
+            `username;shortcode;likedByCount;ownerId;username;full_name\n`);
 
-        fs.appendFile('./data/processed_shortcodes.csv',
-            `shortcode\n`, (err) => {
-                if (err) throw err;
-            });  
+        fs.appendFileSync('./data/processed_shortcodes.csv', `shortcode\n`);
     } 
 
     let processedShortcodes = [];
@@ -80,7 +70,7 @@ const start = async function(purgeData) {
         await getComments(commentProxy, postInfo);
 
         // FD: Randomly waiting...
-        if (i % 6 == 0) {
+        if (i % 3 == 0) {
             const sleeping = randomIntFromInterval(120, 240);
             console.log(`Waiting for ${sleeping} secs...`);
             sleep.sleep(sleeping);
@@ -108,28 +98,30 @@ const start = async function(purgeData) {
         console.log(`Saving data for post ${postWithComments.shortcode}...`);
 
         for (const comment of postWithComments.comments) {
-            fs.appendFile('./data/dataset_post_comments.csv',
-                `"${postWithComments.username}";"${postWithComments.shortcode}";${postWithComments.commentCount};${postWithComments.commentCountWithAnswers};${comment.id};"${comment.text}";${comment.created_at};${comment.ownerId};"${comment.ownerUsername}"\n`, (err) => {
-                    if (err) throw err;
-                });
+            fs.appendFileSync('./data/dataset_post_comments.csv',
+                `"${postWithComments.username}";"${postWithComments.shortcode}";${postWithComments.commentCount};${postWithComments.commentCountWithAnswers};${comment.id};"${comment.text}";${comment.created_at};${comment.ownerId};"${comment.ownerUsername}"\n`);
         }
 
         for (const like of postWithComments.likedBy) {
-            fs.appendFile('./data/dataset_post_likes.csv',
-                `"${postWithComments.username}";"${postWithComments.shortcode}";${postWithComments.likedByCount};${like.id};"${like.username}";"${like.fullName}"\n`, (err) => {
-                    if (err) throw err;
-                });
+            fs.appendFileSync('./data/dataset_post_likes.csv',
+                `"${postWithComments.username}";"${postWithComments.shortcode}";${postWithComments.likedByCount};${like.id};"${like.username}";"${like.fullName}"\n`);
         }
 
-        fs.appendFile('./data/processed_shortcodes.csv',
-            `${postWithComments.shortcode}\n`, (err) => {
-                if (err) throw err;
-            });   
+        fs.appendFileSync('./data/processed_shortcodes.csv', `${postWithComments.shortcode}\n`);
     }
 
     async function getComments(proxy, postInfo, hasNextPage = false, endCursor = '') {
+        commentCount++;
+
         // FD: Randomly waiting...
-        const sleeping = randomIntFromInterval(1, 2);
+        let sleeping = 0;
+        if (commentCount % 30 === 0) {
+            sleeping = randomIntFromInterval(40, 120);
+            commentCount = 0;
+            console.log(`Waiting for ${sleeping} secs...`);
+        } else {
+            sleeping = randomIntFromInterval(1, 2);
+        }
         sleep.sleep(sleeping);
 
         // FD: How many elements should be selected (randomly).
@@ -143,10 +135,10 @@ const start = async function(purgeData) {
         }
 
         const response = await axios.get(url, {
-            proxy: {
-                host: proxy.host,
-                port: proxy.port
-            }
+            // proxy: {
+            //     host: proxy.host,
+            //     port: proxy.port
+            // }
         });
         const data = response.data.data.shortcode_media.edge_media_to_parent_comment;
         postInfo.commentCountWithAnswers = data.count;
@@ -164,10 +156,20 @@ const start = async function(purgeData) {
             await getComments(proxy, postInfo, data.page_info.has_next_page, data.page_info.end_cursor);
         }
     }
-
+    
     async function getLikes(proxy, postInfo, hasNextPage = false, endCursor = '') {
+        likeCount++;
+
         // FD: Randomly waiting...
-        const sleeping = randomIntFromInterval(1, 2);
+        let sleeping = 0;
+        if (likeCount % 30 === 0) {
+            sleeping = randomIntFromInterval(40, 120);
+            likeCount = 0;
+            console.log(`Waiting for ${sleeping} secs...`);
+        } else {
+            sleeping = randomIntFromInterval(1, 2);
+        }
+        
         sleep.sleep(sleeping);
 
         // FD: How many elements should be selected (randomly).
@@ -181,10 +183,20 @@ const start = async function(purgeData) {
         }
 
         const response = await axios.get(url, {
-            proxy: {
-                host: proxy.host,
-                port: proxy.port
-            }});
+            // proxy: {
+            //     host: proxy.host,
+            //     port: proxy.port
+            // }
+        });
+
+        if (response.data.data === undefined) {
+            while (response.data.data === undefined) {
+                console.log(`Sleeping 3 secs to ensure data is available (weired error!)...`);
+                console.dir(response.data);
+                console.log(JSON.stringify(response.data));
+                sleep.sleep(3);
+            }
+        }
         const data = response.data.data.shortcode_media.edge_liked_by;
         postInfo.likedByCount += data.edges.length;
 
