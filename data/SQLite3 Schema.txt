@@ -1,0 +1,39 @@
+CREATE TABLE Posts (
+    Shortcode    STRING  NOT NULL
+                         PRIMARY KEY,
+    UserId       BIGINT  NOT NULL,
+    Username     STRING  NOT NULL,
+    UserFullName STRING  NOT NULL,
+    Url          STRING  NOT NULL,
+    ImageUrl     STRING  NOT NULL,
+    LikesCount   INTEGER NOT NULL,
+    Timestamp    STRING  NOT NULL
+);
+
+
+
+
+CREATE TABLE Comments (
+    Shortcode           STRING  NOT NULL,
+    PostUsername        STRING  NOT NULL,
+    Comments            INTEGER NOT NULL,
+    CommentsWithAnswers INTEGER NOT NULL,
+    CommentId           BIGINT  NOT NULL
+                                PRIMARY KEY,
+    Text                TEXT    NOT NULL,
+    Created             INTEGER NOT NULL,
+    UserId              BIGINT  NOT NULL,
+    Username            STRING  NOT NULL
+);
+
+
+
+
+CREATE TABLE Likes (
+    Shortcode    STRING  NOT NULL,
+    PostUsername STRING  NOT NULL,
+    PostLikes    INTEGER NOT NULL,
+    UserId       INTEGER NOT NULL,
+    Username     STRING  NOT NULL,
+    UserFullName STRING  NOT NULL
+);
