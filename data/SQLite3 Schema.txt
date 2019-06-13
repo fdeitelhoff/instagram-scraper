@@ -37,3 +37,12 @@ CREATE TABLE Likes (
     Username     STRING  NOT NULL,
     UserFullName STRING  NOT NULL
 );
+
+
+
+
+CREATE TABLE Resume (
+    Shortcode STRING NOT NULL,
+    Type      STRING NOT NULL,
+    EndCursor STRING NOT NULL
+);
