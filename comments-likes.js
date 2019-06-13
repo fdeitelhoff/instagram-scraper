@@ -75,23 +75,102 @@ const start = async function(purgeData) {
   // let rawdata = fs.readFileSync("./data/dataset_posts.json");
   // let posts = JSON.parse(rawdata)
   let posts = [];
-  db.all(
-    "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0",
+  let resume = {};
+  db.get(
+    "SELECT Shortcode, Type, EndCursor FROM Resume ORDER BY Timestamp DESC LIMIT 1;",
     (err, results) => {
       if (err) {
         console.log(err);
       } else {
-        // console.log(results);
-        posts = results;
-        // processedShortcodes = results.map(shortcode => {
-        //   return shortcode.Shortcode;
-        // });
+        resume = results;
 
-        start();
-        // do something with results
+        if (resume) {
+          resumeData();
+        } else {
+          db.all(
+            "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
+            (err, results) => {
+              if (err) {
+                console.log(err);
+              } else {
+                // console.log(results);
+                posts = results;
+
+                start();
+              }
+            }
+          );
+        }
       }
     }
   );
+
+  async function resumeData() {
+    db.get(
+      `SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Shortcode = "${
+        resume.Shortcode
+      }" AND Complete = 0;`,
+      (err, results) => {
+        if (err) {
+          console.log(err);
+        } else {
+          if (results) {
+            const postInfo = results;
+            startResumeData(postInfo);
+          } else {
+            console.log(`Post for shortcode ${resume.Shortcode} not found...`);
+
+            db.all(
+              "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
+              (err, results) => {
+                if (err) {
+                  console.log(err);
+                } else {
+                  // console.log(results);
+                  posts = results;
+
+                  start();
+                }
+              }
+            );
+          }
+        }
+      }
+    );
+  }
+
+  async function startResumeData(postInfo) {
+    console.log(
+      `Resuming Shortcode ${resume.Shortcode} for Type ${
+        resume.Type
+      } with End Cursor ${resume.EndCursor}`
+    );
+
+    if (resume.Type === "Comments") {
+      const commentProxy =
+        proxies[randomIntFromInterval(0, proxies.length - 1)];
+      console.log(`Using Proxy ${commentProxy.host}...`);
+      await getComments(commentProxy, postInfo, true, resume.EndCursor);
+    } else if (resume.Type === "Likes") {
+      const likeProxy = proxies[randomIntFromInterval(0, proxies.length - 1)];
+      console.log(`Using Proxy ${likeProxy.host}...`);
+      await getLikes(likeProxy, postInfo, true, resume.EndCursor);
+    }
+
+    console.log(`Updating status for post ${postInfo.Shortcode}...`);
+    db.run(
+      `UPDATE Posts SET Complete = 1 WHERE Shortcode = "${postInfo.Shortcode}"`
+    );
+
+    console.log(
+      `Resuming done... deleting resume info and start scraping again...`
+    );
+    // db.run(`DELETE FROM Resume WHERE Shortcode = "${postInfo.Shortcode}`);
+
+    posts.push(postInfo);
+
+    start();
+  }
 
   async function start() {
     console.log(`${posts.length} posts found...`);
@@ -112,7 +191,7 @@ const start = async function(purgeData) {
       //     continue;
       //   }
 
-      console.log(`Getting comments for post ${post.Shortcode}...`);
+      console.log(`Getting data for post ${post.Shortcode}...`);
 
       // FD: Getting a random proxy.
       const commentProxy =
@@ -215,7 +294,8 @@ const start = async function(purgeData) {
     }
 
     try {
-      //   console.log(url);
+      await updateResumeData(postInfo.Shortcode, "Comments", endCursor);
+
       const response = await axios.get(url, {
         //   proxy: {
         //     host: proxy.host,
@@ -275,11 +355,19 @@ const start = async function(purgeData) {
       }
     } catch (error) {
       // FD...
-      console.log(error.response);
-      console.log(`Waiting for 600 secs, due to http error...`);
-      sleep.sleep(600);
-      await getComments(proxy, postInfo, hasNextPage, end_cursor);
+      console.log(error);
+      console.log(`Waiting for 300 secs, due to http error...`);
+      sleep.sleep(300);
+      await getComments(proxy, postInfo, hasNextPage, endCursor);
     }
+  }
+
+  async function updateResumeData(shortcode, type, endCursor) {
+    db.run("INSERT INTO Resume (Shortcode, Type, EndCursor) VALUES (?, ?, ?)", [
+      shortcode,
+      type,
+      endCursor
+    ]);
   }
 
   async function getLikes(
@@ -317,6 +405,8 @@ const start = async function(purgeData) {
     }
 
     try {
+      await updateResumeData(postInfo.Shortcode, "Likes", endCursor);
+
       const response = await axios.get(url, {
         //   proxy: {
         //     host: proxy.host,
@@ -377,10 +467,10 @@ const start = async function(purgeData) {
       }
     } catch (error) {
       // FD...
-      console.log(error.response);
-      console.log(`Waiting for 600 secs, due to http error...`);
-      sleep.sleep(600);
-      await getLikes(proxy, postInfo, data.page_info.has_next_page, end_cursor);
+      console.log(error);
+      console.log(`Waiting for 300 secs, due to http error...`);
+      sleep.sleep(300);
+      await getLikes(proxy, postInfo, hasNextPage, endCursor);
     }
   }
 
