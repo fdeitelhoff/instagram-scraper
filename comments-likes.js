@@ -167,9 +167,22 @@ const start = async function(purgeData) {
     );
     // db.run(`DELETE FROM Resume WHERE Shortcode = "${postInfo.Shortcode}`);
 
-    posts.push(postInfo);
+    db.all(
+        "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
+        (err, results) => {
+            if (err) {
+                console.log(err);
+            } else {
+                // console.log(results);
+                posts = results;
 
-    start();
+                deleteResumeData(resume.Shortcode, resume.Type, resume.EndCursor);
+                resume = undefined; // FD: For the safety... accessing should result in an error.
+
+                start();
+            }
+        }
+    );
   }
 
   async function start() {
@@ -221,44 +234,44 @@ const start = async function(purgeData) {
       //   saveData(postInfo);
       console.log(`Updating status for post ${post.Shortcode}...`);
       db.run(
-        `UPDATE Posts SET Complete = 1 WHERE Shortcode = ${post.Shortcode}`
+        `UPDATE Posts SET Complete = 1 WHERE Shortcode = "${post.Shortcode}"`
       );
       i++;
     }
   }
   //   }
 
-  function saveData(postWithComments) {
-    // FD: Saving all comments and likes in two csv files.
-    console.log(`Saving data for post ${postWithComments.shortcode}...`);
+//   function saveData(postWithComments) {
+//     // FD: Saving all comments and likes in two csv files.
+//     console.log(`Saving data for post ${postWithComments.shortcode}...`);
 
-    for (const comment of postWithComments.comments) {
-      fs.appendFileSync(
-        "./data/dataset_post_comments.csv",
-        `"${postWithComments.username}";"${postWithComments.shortcode}";${
-          postWithComments.commentCount
-        };${postWithComments.commentCountWithAnswers};${comment.id};"${
-          comment.text
-        }";${comment.created_at};${comment.ownerId};"${
-          comment.ownerUsername
-        }"\n`
-      );
-    }
+//     for (const comment of postWithComments.comments) {
+//       fs.appendFileSync(
+//         "./data/dataset_post_comments.csv",
+//         `"${postWithComments.username}";"${postWithComments.shortcode}";${
+//           postWithComments.commentCount
+//         };${postWithComments.commentCountWithAnswers};${comment.id};"${
+//           comment.text
+//         }";${comment.created_at};${comment.ownerId};"${
+//           comment.ownerUsername
+//         }"\n`
+//       );
+//     }
 
-    for (const like of postWithComments.likedBy) {
-      fs.appendFileSync(
-        "./data/dataset_post_likes.csv",
-        `"${postWithComments.username}";"${postWithComments.shortcode}";${
-          postWithComments.likedByCount
-        };${like.id};"${like.username}";"${like.fullName}"\n`
-      );
-    }
+//     for (const like of postWithComments.likedBy) {
+//       fs.appendFileSync(
+//         "./data/dataset_post_likes.csv",
+//         `"${postWithComments.username}";"${postWithComments.shortcode}";${
+//           postWithComments.likedByCount
+//         };${like.id};"${like.username}";"${like.fullName}"\n`
+//       );
+//     }
 
-    fs.appendFileSync(
-      "./data/processed_shortcodes.csv",
-      `${postWithComments.shortcode}\n`
-    );
-  }
+//     fs.appendFileSync(
+//       "./data/processed_shortcodes.csv",
+//       `${postWithComments.shortcode}\n`
+//     );
+//   }
 
   async function getComments(
     proxy,
@@ -294,7 +307,7 @@ const start = async function(purgeData) {
     }
 
     try {
-      await updateResumeData(postInfo.Shortcode, "Comments", endCursor);
+        await createResumeData(postInfo.Shortcode, "Comments", endCursor);
 
       const response = await axios.get(url, {
         //   proxy: {
@@ -345,6 +358,8 @@ const start = async function(purgeData) {
         );
       }
 
+        await deleteResumeData(postInfo.Shortcode, "Comments", endCursor);
+
       if (data.page_info.has_next_page) {
         await getComments(
           proxy,
@@ -362,13 +377,17 @@ const start = async function(purgeData) {
     }
   }
 
-  async function updateResumeData(shortcode, type, endCursor) {
+  async function createResumeData(shortcode, type, endCursor) {
     db.run("INSERT INTO Resume (Shortcode, Type, EndCursor) VALUES (?, ?, ?)", [
       shortcode,
       type,
       endCursor
     ]);
   }
+
+    async function deleteResumeData(shortcode, type, endCursor) {
+        db.run(`DELETE FROM Resume WHERE Shortcode = "${shortcode}" AND Type = "${type}" AND EndCursor = "${endCursor}"`);
+    }
 
   async function getLikes(
     proxy,
@@ -405,7 +424,7 @@ const start = async function(purgeData) {
     }
 
     try {
-      await updateResumeData(postInfo.Shortcode, "Likes", endCursor);
+        await createResumeData(postInfo.Shortcode, "Likes", endCursor);
 
       const response = await axios.get(url, {
         //   proxy: {
@@ -456,6 +475,8 @@ const start = async function(purgeData) {
           ]
         );
       }
+
+        await deleteResumeData(postInfo.Shortcode, "Likes", endCursor);
 
       if (data.page_info.has_next_page) {
         await getLikes(
