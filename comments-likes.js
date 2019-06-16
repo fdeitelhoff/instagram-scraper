@@ -356,9 +356,9 @@ const start = async function(purgeData) {
             comment.ownerUsername
           ]
         );
-      }
+      } 
 
-        await deleteResumeData(postInfo.Shortcode, "Comments", endCursor);
+      await deleteResumeData(postInfo.Shortcode, "Comments", endCursor);
 
       if (data.page_info.has_next_page) {
         await getComments(
