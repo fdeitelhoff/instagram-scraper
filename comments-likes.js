@@ -1,6 +1,7 @@
 const fs = require("fs");
 const axios = require("axios");
 const sleep = require("sleep");
+const moment = require("moment");
 var sqlite3 = require("sqlite3").verbose();
 
 var db = new sqlite3.Database("./data/db.instagram");
@@ -168,20 +169,20 @@ const start = async function(purgeData) {
     // db.run(`DELETE FROM Resume WHERE Shortcode = "${postInfo.Shortcode}`);
 
     db.all(
-        "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
-        (err, results) => {
-            if (err) {
-                console.log(err);
-            } else {
-                // console.log(results);
-                posts = results;
+      "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
+      (err, results) => {
+        if (err) {
+          console.log(err);
+        } else {
+          // console.log(results);
+          posts = results;
 
-                deleteResumeData(resume.Shortcode, resume.Type, resume.EndCursor);
-                resume = undefined; // FD: For the safety... accessing should result in an error.
+          deleteResumeData(resume.Shortcode, resume.Type, resume.EndCursor);
+          resume = undefined; // FD: For the safety... accessing should result in an error.
 
-                start();
-            }
+          start();
         }
+      }
     );
   }
 
@@ -241,37 +242,37 @@ const start = async function(purgeData) {
   }
   //   }
 
-//   function saveData(postWithComments) {
-//     // FD: Saving all comments and likes in two csv files.
-//     console.log(`Saving data for post ${postWithComments.shortcode}...`);
+  //   function saveData(postWithComments) {
+  //     // FD: Saving all comments and likes in two csv files.
+  //     console.log(`Saving data for post ${postWithComments.shortcode}...`);
 
-//     for (const comment of postWithComments.comments) {
-//       fs.appendFileSync(
-//         "./data/dataset_post_comments.csv",
-//         `"${postWithComments.username}";"${postWithComments.shortcode}";${
-//           postWithComments.commentCount
-//         };${postWithComments.commentCountWithAnswers};${comment.id};"${
-//           comment.text
-//         }";${comment.created_at};${comment.ownerId};"${
-//           comment.ownerUsername
-//         }"\n`
-//       );
-//     }
+  //     for (const comment of postWithComments.comments) {
+  //       fs.appendFileSync(
+  //         "./data/dataset_post_comments.csv",
+  //         `"${postWithComments.username}";"${postWithComments.shortcode}";${
+  //           postWithComments.commentCount
+  //         };${postWithComments.commentCountWithAnswers};${comment.id};"${
+  //           comment.text
+  //         }";${comment.created_at};${comment.ownerId};"${
+  //           comment.ownerUsername
+  //         }"\n`
+  //       );
+  //     }
 
-//     for (const like of postWithComments.likedBy) {
-//       fs.appendFileSync(
-//         "./data/dataset_post_likes.csv",
-//         `"${postWithComments.username}";"${postWithComments.shortcode}";${
-//           postWithComments.likedByCount
-//         };${like.id};"${like.username}";"${like.fullName}"\n`
-//       );
-//     }
+  //     for (const like of postWithComments.likedBy) {
+  //       fs.appendFileSync(
+  //         "./data/dataset_post_likes.csv",
+  //         `"${postWithComments.username}";"${postWithComments.shortcode}";${
+  //           postWithComments.likedByCount
+  //         };${like.id};"${like.username}";"${like.fullName}"\n`
+  //       );
+  //     }
 
-//     fs.appendFileSync(
-//       "./data/processed_shortcodes.csv",
-//       `${postWithComments.shortcode}\n`
-//     );
-//   }
+  //     fs.appendFileSync(
+  //       "./data/processed_shortcodes.csv",
+  //       `${postWithComments.shortcode}\n`
+  //     );
+  //   }
 
   async function getComments(
     proxy,
@@ -307,7 +308,7 @@ const start = async function(purgeData) {
     }
 
     try {
-        await createResumeData(postInfo.Shortcode, "Comments", endCursor);
+      await createResumeData(postInfo.Shortcode, "Comments", endCursor);
 
       const response = await axios.get(url, {
         //   proxy: {
@@ -342,8 +343,11 @@ const start = async function(purgeData) {
           ownerUsername: edge.node.owner.username
         };
         //   postInfo.comments.push(comment);
+
+        var dateTime = moment.unix(comment.created_at);
+
         db.run(
-          "INSERT INTO Comments (Shortcode, PostUsername, Comments, CommentsWithAnswers, CommentId, Text, Created, UserId, Username) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO Comments (Shortcode, PostUsername, Comments, CommentsWithAnswers, CommentId, Text, Created, CreatedDate, CreatedTime, UserId, Username) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             postInfo.Shortcode,
             postInfo.Username,
@@ -352,11 +356,13 @@ const start = async function(purgeData) {
             comment.id,
             comment.text,
             comment.created_at,
+            dateTime.format("YYYY-MM-DD"),
+            dateTime.format("HH:mm:ss"),
             comment.ownerId,
             comment.ownerUsername
           ]
         );
-      } 
+      }
 
       await deleteResumeData(postInfo.Shortcode, "Comments", endCursor);
 
@@ -385,9 +391,11 @@ const start = async function(purgeData) {
     ]);
   }
 
-    async function deleteResumeData(shortcode, type, endCursor) {
-        db.run(`DELETE FROM Resume WHERE Shortcode = "${shortcode}" AND Type = "${type}" AND EndCursor = "${endCursor}"`);
-    }
+  async function deleteResumeData(shortcode, type, endCursor) {
+    db.run(
+      `DELETE FROM Resume WHERE Shortcode = "${shortcode}" AND Type = "${type}" AND EndCursor = "${endCursor}"`
+    );
+  }
 
   async function getLikes(
     proxy,
@@ -424,7 +432,7 @@ const start = async function(purgeData) {
     }
 
     try {
-        await createResumeData(postInfo.Shortcode, "Likes", endCursor);
+      await createResumeData(postInfo.Shortcode, "Likes", endCursor);
 
       const response = await axios.get(url, {
         //   proxy: {
@@ -476,7 +484,7 @@ const start = async function(purgeData) {
         );
       }
 
-        await deleteResumeData(postInfo.Shortcode, "Likes", endCursor);
+      await deleteResumeData(postInfo.Shortcode, "Likes", endCursor);
 
       if (data.page_info.has_next_page) {
         await getLikes(
