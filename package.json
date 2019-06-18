@@ -8,6 +8,7 @@
 		"apify": "^0.13.7",
 		"axios": "^0.19.0",
 		"https-proxy-agent": "^2.2.1",
+		"moment": "^2.24.0",
 		"request-promise": "^4.2.4",
 		"request-promise-native": "^1.0.7",
 		"sleep": "^6.1.0",
