@@ -46,3 +46,20 @@ CREATE TABLE Resume (
     Type      STRING NOT NULL,
     EndCursor STRING NOT NULL
 );
+
+
+
+
+CREATE TABLE Users (
+    UserId          INTEGER NOT NULL,
+    Username        STRING  NOT NULL,
+    UsernameNew     STRING  NOT NULL,
+    Fullname        STRING  NOT NULL,
+    Biography       TEXT    NOT NULL,
+    ExternalUrl     STRING  NOT NULL,
+    ProfilePicUrl   STRING  NOT NULL,
+    ProfilePicUrlHd STRING  NOT NULL,
+    FollowedBy      INTEGER NOT NULL,
+    Following       INTEGER NOT NULL,
+    ConnectedFbPage STRING  NOT NULL
+);
