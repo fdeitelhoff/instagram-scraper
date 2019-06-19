@@ -6,8 +6,6 @@ var sqlite3 = require("sqlite3").verbose();
 
 var db = new sqlite3.Database("./data/db.instagram");
 
-let currentUser = {};
-
 const start = async function(category) {
   // FD: This will be improved....
   let tableName = "";
@@ -25,17 +23,26 @@ const start = async function(category) {
       if (err) {
         console.log(err);
       } else {
+        // console.log(users);
         scrapUserData(users);
       }
     }
   );
 
+  let userCount = 0;
   async function scrapUserData(users) {
     for (const user of users) {
-      currentUser = user;
+      userCount++;
+      
       console.log(
         `Getting user data for user ${user.Username} (${user.UserId})`
       );
+
+      if (userCount % 20 === 0) {
+        sleep.sleep(20);
+        console.log(`Sleeping for 20 seconds...`);
+        userCount = 1;
+      }
 
       const url = `https://www.instagram.com/${user.Username}`;
       const response = await axios.get(url, {
@@ -70,47 +77,50 @@ const start = async function(category) {
       }
 
       const data = JSON.parse(scriptData);
-
       const userData = data.entry_data.ProfilePage[0].graphql.user;
 
-      try {
-        db.get(
-          `SELECT Count(1) as UserExists FROM Users WHERE UserId = ${
-            currentUser.UserId
-          };`,
-          (err, user) => {
-            if (err) {
-              console.log(err);
-            } else {
-              if (!user.UserExists) {
-                db.run(
-                  "INSERT INTO Users (UserId, Username, UsernameNew, Fullname, Biography, ExternalUrl, ProfilePicUrl, ProfilePicUrlHd, FollowedBy, Following, ConnectedFbPage) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-                  [
-                    currentUser.UserId,
-                    currentUser.Username,
-                    userData.username,
-                    userData.full_name,
-                    userData.biography,
-                    userData.external_url,
-                    userData.profile_pic_url,
-                    userData.profile_pic_url_hd,
-                    userData.edge_followed_by.count,
-                    userData.edge_follow.count,
-                    userData.connected_fb_page
-                  ]
-                );
-              }
+      await writeData(user, userData);
+    }
+  }
+
+  async function writeData(currentUser, userData) {
+    try {
+      db.get(
+        `SELECT Count(1) as UserExists FROM Users WHERE UserId = ${
+        currentUser.UserId
+        };`,
+        (err, user) => {
+          if (err) {
+            console.log(err);
+          } else {
+            if (!user.UserExists) {
+              db.run(
+                "INSERT INTO Users (UserId, Username, UsernameChange, Fullname, Biography, ExternalUrl, ProfilePicUrl, ProfilePicUrlHd, FollowedBy, Following, ConnectedFbPage) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                [
+                  currentUser.UserId,
+                  currentUser.Username,
+                  userData.username,
+                  userData.full_name,
+                  userData.biography,
+                  userData.external_url,
+                  userData.profile_pic_url,
+                  userData.profile_pic_url_hd,
+                  userData.edge_followed_by.count,
+                  userData.edge_follow.count,
+                  userData.connected_fb_page
+                ]
+              );
             }
           }
-        );
-      } catch (error) {
-        fs.appendFileSync(
-          "./data/user_scraping_errors.txt",
-          `Error while scraping user data for ${currentUser.Username} (${
-            currentUser.UserId
-          }): Error\n${error}\n\n`
-        );
-      }
+        }
+      );
+    } catch (error) {
+      fs.appendFileSync(
+        "./data/user_scraping_errors.txt",
+        `Error while scraping user data for ${currentUser.Username} (${
+        currentUser.UserId
+        }): Error\n${error}\n\n`
+      );
     }
   }
 };
