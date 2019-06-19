@@ -342,7 +342,6 @@ const start = async function(purgeData) {
           ownerId: edge.node.owner.id,
           ownerUsername: edge.node.owner.username
         };
-        //   postInfo.comments.push(comment);
 
         var dateTime = moment.unix(comment.created_at);
 
