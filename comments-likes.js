@@ -50,31 +50,7 @@ const start = async function(purgeData) {
     fs.appendFileSync("./data/processed_shortcodes.csv", `shortcode\n`);
   }
 
-  //   let processedShortcodes = [];
-
-  //   db.all("SELECT Shortcode FROM Posts WHERE Complete = 0", (err, results) => {
-  //     if (err) {
-  //       console.log(err);
-  //     } else {
-  //       //   console.log(results);
-  //       processedShortcodes = results.map(shortcode => {
-  //         return shortcode.Shortcode;
-  //       });
-
-  //       start();
-  //       // do something with results
-  //     }
-  //   });
-
-  //   if (fs.existsSync("./data/processed_shortcodes.csv")) {
-  //     const data = fs.readFileSync("./data/processed_shortcodes.csv", "utf8");
-  //     processedShortcodes = data.trim().match(/[^\r\n]+/g);
-  //     processedShortcodes.shift();
-  //   }
-  //   async function start() {
   let i = 1;
-  // let rawdata = fs.readFileSync("./data/dataset_posts.json");
-  // let posts = JSON.parse(rawdata)
   let posts = [];
   let resume = {};
   db.get(
@@ -190,21 +166,6 @@ const start = async function(purgeData) {
     console.log(`${posts.length} posts found...`);
 
     for (const post of posts) {
-      //   const postInfo = {
-      //     shortcode: post["#debug"].shortcode,
-      //     username: post["#debug"].userUsername,
-      //     commentCount: 0,
-      //     commentCountWithAnswers: 0,
-      //     comments: [],
-      //     likedByCount: 0,
-      //     likedBy: []
-      //   };
-
-      //   if (processedShortcodes.includes(postInfo.shortcode)) {
-      //     console.log(`Skipping already processed post ${postInfo.shortcode}...`);
-      //     continue;
-      //   }
-
       console.log(`Getting data for post ${post.Shortcode}...`);
 
       // FD: Getting a random proxy.
@@ -240,39 +201,6 @@ const start = async function(purgeData) {
       i++;
     }
   }
-  //   }
-
-  //   function saveData(postWithComments) {
-  //     // FD: Saving all comments and likes in two csv files.
-  //     console.log(`Saving data for post ${postWithComments.shortcode}...`);
-
-  //     for (const comment of postWithComments.comments) {
-  //       fs.appendFileSync(
-  //         "./data/dataset_post_comments.csv",
-  //         `"${postWithComments.username}";"${postWithComments.shortcode}";${
-  //           postWithComments.commentCount
-  //         };${postWithComments.commentCountWithAnswers};${comment.id};"${
-  //           comment.text
-  //         }";${comment.created_at};${comment.ownerId};"${
-  //           comment.ownerUsername
-  //         }"\n`
-  //       );
-  //     }
-
-  //     for (const like of postWithComments.likedBy) {
-  //       fs.appendFileSync(
-  //         "./data/dataset_post_likes.csv",
-  //         `"${postWithComments.username}";"${postWithComments.shortcode}";${
-  //           postWithComments.likedByCount
-  //         };${like.id};"${like.username}";"${like.fullName}"\n`
-  //       );
-  //     }
-
-  //     fs.appendFileSync(
-  //       "./data/processed_shortcodes.csv",
-  //       `${postWithComments.shortcode}\n`
-  //     );
-  //   }
 
   async function getComments(
     proxy,
@@ -323,10 +251,7 @@ const start = async function(purgeData) {
 
       const data =
         response.data.data.shortcode_media.edge_media_to_parent_comment;
-      //   console.log("data", data.page_info);
       hasNextPage = data.page_info.has_next_page;
-      // postInfo.commentCountWithAnswers = data.count;
-      // postInfo.commentCount += data.edges.length;
 
       console.log(
         `(${sleeping}s): Getting next ${data.edges.length} comments for post ${
@@ -346,12 +271,10 @@ const start = async function(purgeData) {
         var dateTime = moment.unix(comment.created_at);
 
         db.run(
-          "INSERT INTO Comments (Shortcode, PostUsername, Comments, CommentsWithAnswers, CommentId, Text, Created, CreatedDate, CreatedTime, UserId, Username) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO Comments (Shortcode, PostUsername, CommentId, Text, Created, CreatedDate, CreatedTime, UserId, Username) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             postInfo.Shortcode,
             postInfo.Username,
-            0,
-            0,
             comment.id,
             comment.text,
             comment.created_at,
@@ -455,7 +378,6 @@ const start = async function(purgeData) {
         }
       }
       const data = response.data.data.shortcode_media.edge_liked_by;
-      // postInfo.likedByCount += data.edges.length;
 
       console.log(
         `(${sleeping}s): Getting next ${data.edges.length} likes for post ${
@@ -469,13 +391,12 @@ const start = async function(purgeData) {
           username: edge.node.username,
           fullName: edge.node.full_name
         };
-        //   postInfo.likedBy.push(like);
+
         db.run(
-          "INSERT INTO Likes (Shortcode, PostUsername, PostLikes, UserId, Username, UserFullName) VALUES (?, ?, ?, ?, ?, ?)",
+          "INSERT INTO Likes (Shortcode, PostUsername, UserId, Username, UserFullName) VALUES (?, ?, ?, ?, ?, ?)",
           [
             postInfo.Shortcode,
             postInfo.Username,
-            0,
             like.id,
             like.username,
             like.fullName
