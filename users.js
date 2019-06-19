@@ -1,6 +1,7 @@
 const fs = require("fs");
 const axios = require("axios");
 const sleep = require("sleep");
+const moment = require("moment");
 var HTMLParser = require("node-html-parser");
 var sqlite3 = require("sqlite3").verbose();
 
@@ -33,14 +34,18 @@ const start = async function(category) {
   async function scrapUserData(users) {
     for (const user of users) {
       userCount++;
-      
+
+      const dateTime = moment();
+
       console.log(
-        `Getting user data for user ${user.Username} (${user.UserId})`
+        `${dateTime.format(
+          "DD.MM.YYYY, HH:mm:ss"
+        )} - Getting user data for user ${user.Username} (${user.UserId})`
       );
 
       if (userCount % 20 === 0) {
-        sleep.sleep(20);
         console.log(`Sleeping for 20 seconds...`);
+        sleep.sleep(20);
         userCount = 1;
       }
 
@@ -70,9 +75,8 @@ const start = async function(category) {
           typeof scriptTag.rawText.indexOf === "function" &&
           scriptTag.rawText.indexOf("window._sharedData = ") === 0
         ) {
-          scriptData = scriptTag.rawText
-            .replace("window._sharedData = ", "")
-            .replace(";", "");
+          scriptData = scriptTag.rawText.replace(/;/g, "");
+          scriptData = scriptData.replace(/window._sharedData =/g, "");
         }
       }
 
@@ -87,7 +91,7 @@ const start = async function(category) {
     try {
       db.get(
         `SELECT Count(1) as UserExists FROM Users WHERE UserId = ${
-        currentUser.UserId
+          currentUser.UserId
         };`,
         (err, user) => {
           if (err) {
@@ -118,7 +122,7 @@ const start = async function(category) {
       fs.appendFileSync(
         "./data/user_scraping_errors.txt",
         `Error while scraping user data for ${currentUser.Username} (${
-        currentUser.UserId
+          currentUser.UserId
         }): Error\n${error}\n\n`
       );
     }
