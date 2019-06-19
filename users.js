@@ -44,46 +44,55 @@ const start = async function(category) {
       );
 
       if (userCount % 20 === 0) {
-        console.log(`Sleeping for 20 seconds...`);
-        sleep.sleep(20);
+        console.log(`Sleeping for 10 seconds...`);
+        sleep.sleep(10);
         userCount = 1;
       }
 
-      const url = `https://www.instagram.com/${user.Username}`;
-      const response = await axios.get(url, {
-        //   proxy: {
-        //     host: proxy.host,
-        //     port: proxy.port,
-        //     auth: {
-        //       username: proxy.user,
-        //       password: proxy.password
-        //     }
-        //   }
-      });
+      try {
+        const url = `https://www.instagram.com/${user.Username}`;
+        const response = await axios.get(url, {
+          //   proxy: {
+          //     host: proxy.host,
+          //     port: proxy.port,
+          //     auth: {
+          //       username: proxy.user,
+          //       password: proxy.password
+          //     }
+          //   }
+        });
 
-      const root = HTMLParser.parse(response.data, {
-        lowerCaseTagName: false, // convert tag name to lower case (hurt performance heavily)
-        script: true, // retrieve content in <script> (hurt performance slightly)
-        style: false, // retrieve content in <style> (hurt performance slightly)
-        pre: false // retrieve content in <pre> (hurt performance slightly)
-      });
+        const root = HTMLParser.parse(response.data, {
+          lowerCaseTagName: false, // convert tag name to lower case (hurt performance heavily)
+          script: true, // retrieve content in <script> (hurt performance slightly)
+          style: false, // retrieve content in <style> (hurt performance slightly)
+          pre: false // retrieve content in <pre> (hurt performance slightly)
+        });
 
-      let scriptData = "";
-      const scriptTags = root.querySelectorAll("script");
-      for (const scriptTag of scriptTags) {
-        if (
-          typeof scriptTag.rawText.indexOf === "function" &&
-          scriptTag.rawText.indexOf("window._sharedData = ") === 0
-        ) {
-          scriptData = scriptTag.rawText.replace(/;/g, "");
-          scriptData = scriptData.replace(/window._sharedData =/g, "");
+        let scriptData = "";
+        const scriptTags = root.querySelectorAll("script");
+        for (const scriptTag of scriptTags) {
+          if (
+            typeof scriptTag.rawText.indexOf === "function" &&
+            scriptTag.rawText.indexOf("window._sharedData = ") === 0
+          ) {
+            scriptData = scriptTag.rawText.replace(/;/g, "");
+            scriptData = scriptData.replace(/window._sharedData =/g, "");
+          }
         }
+
+        const data = JSON.parse(scriptData);
+        const userData = data.entry_data.ProfilePage[0].graphql.user;
+
+        await writeData(user, userData);
+      } catch (error) {
+        fs.appendFileSync(
+          "./data/user_scraping_errors.txt",
+          `Error while scraping user data for ${user.Username} (${
+            user.UserId
+          }): Error\n${error}\n\n`
+        );
       }
-
-      const data = JSON.parse(scriptData);
-      const userData = data.entry_data.ProfilePage[0].graphql.user;
-
-      await writeData(user, userData);
     }
   }
 

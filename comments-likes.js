@@ -393,7 +393,7 @@ const start = async function(purgeData) {
         };
 
         db.run(
-          "INSERT INTO Likes (Shortcode, PostUsername, UserId, Username, UserFullName) VALUES (?, ?, ?, ?, ?, ?)",
+          "INSERT INTO Likes (Shortcode, PostUsername, UserId, Username, UserFullName) VALUES (?, ?, ?, ?, ?)",
           [
             postInfo.Shortcode,
             postInfo.Username,
