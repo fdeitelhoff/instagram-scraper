@@ -65,7 +65,7 @@ const start = async function(purgeData) {
           resumeData();
         } else {
           db.all(
-            "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
+            "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0 AND Error IS NULL;",
             (err, results) => {
               if (err) {
                 console.log(err);
@@ -86,7 +86,7 @@ const start = async function(purgeData) {
     db.get(
       `SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Shortcode = "${
         resume.Shortcode
-      }" AND Complete = 0;`,
+      }" AND Complete = 0 AND Error IS NULL;`,
       (err, results) => {
         if (err) {
           console.log(err);
@@ -98,7 +98,7 @@ const start = async function(purgeData) {
             console.log(`Post for shortcode ${resume.Shortcode} not found...`);
 
             db.all(
-              "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
+              "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0 AND Error IS NULL;",
               (err, results) => {
                 if (err) {
                   console.log(err);
@@ -145,7 +145,7 @@ const start = async function(purgeData) {
     // db.run(`DELETE FROM Resume WHERE Shortcode = "${postInfo.Shortcode}`);
 
     db.all(
-      "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0;",
+      "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Complete = 0 AND Error IS NULL;",
       (err, results) => {
         if (err) {
           console.log(err);
@@ -167,6 +167,12 @@ const start = async function(purgeData) {
 
     for (const post of posts) {
       console.log(`Getting data for post ${post.Shortcode}...`);
+
+      const error = await checkPostError(post);
+      if (error) {
+        console.log(`Error for post ${post.Shortcode} detected...`);
+        continue;
+      }
 
       // FD: Getting a random proxy.
       const commentProxy =
@@ -199,6 +205,29 @@ const start = async function(purgeData) {
         `UPDATE Posts SET Complete = 1 WHERE Shortcode = "${post.Shortcode}"`
       );
       i++;
+    }
+  }
+
+  async function checkPostError(postInfo) {
+    try {
+      await axios.get(postInfo.Url, {
+        //   proxy: {
+        //     host: proxy.host,
+        //     port: proxy.port,
+        //     auth: {
+        //       username: proxy.user,
+        //       password: proxy.password
+        //     }
+        //   }
+      });
+
+      return false;
+    } catch (error) {
+      db.run(
+        `UPDATE Posts SET Error = ${error.response.status} WHERE Shortcode = "${postInfo.Shortcode}"`
+      );
+
+      return true;
     }
   }
 

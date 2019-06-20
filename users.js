@@ -43,12 +43,14 @@ const start = async function(category) {
         )} - Getting user data for user ${user.Username} (${user.UserId})`
       );
 
-      if (userCount % 20 === 0) {
-        console.log(`Sleeping for 10 seconds...`);
-        sleep.sleep(10);
+      if (userCount % 30 === 0) {
+        const sleeping = 5;
+        console.log(`Sleeping for ${sleeping} seconds...`);
+        sleep.sleep(sleeping);
         userCount = 1;
       }
 
+      let userData = {};
       try {
         const url = `https://www.instagram.com/${user.Username}`;
         const response = await axios.get(url, {
@@ -82,16 +84,17 @@ const start = async function(category) {
         }
 
         const data = JSON.parse(scriptData);
-        const userData = data.entry_data.ProfilePage[0].graphql.user;
+        userData = data.entry_data.ProfilePage[0].graphql.user;
+        userData.Error = null;
 
         await writeData(user, userData);
       } catch (error) {
-        fs.appendFileSync(
-          "./data/user_scraping_errors.txt",
-          `Error while scraping user data for ${user.Username} (${
-            user.UserId
-          }): Error\n${error}\n\n`
-        );
+        userData.Error = error.response.status;
+        userData.edge_followed_by = {};
+        userData.edge_followed_by.count = 0;
+        userData.edge_follow = {};
+        userData.edge_follow.count = 0;
+        await writeData(user, userData)
       }
     }
   }
@@ -108,7 +111,7 @@ const start = async function(category) {
           } else {
             if (!user.UserExists) {
               db.run(
-                "INSERT INTO Users (UserId, Username, UsernameChange, Fullname, Biography, ExternalUrl, ProfilePicUrl, ProfilePicUrlHd, FollowedBy, Following, ConnectedFbPage) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                "INSERT INTO Users (UserId, Username, UsernameChange, Fullname, Biography, ExternalUrl, ProfilePicUrl, ProfilePicUrlHd, FollowedBy, Following, ConnectedFbPage, Error) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                 [
                   currentUser.UserId,
                   currentUser.Username,
@@ -120,7 +123,8 @@ const start = async function(category) {
                   userData.profile_pic_url_hd,
                   userData.edge_followed_by.count,
                   userData.edge_follow.count,
-                  userData.connected_fb_page
+                  userData.connected_fb_page,
+                  userData.Error
                 ]
               );
             }
