@@ -43,7 +43,7 @@ const start = async function(category) {
         )} - Getting user data for user ${user.Username} (${user.UserId})`
       );
 
-      if (userCount % 30 === 0) {
+      if (userCount % 50 === 0) {
         const sleeping = 5;
         console.log(`Sleeping for ${sleeping} seconds...`);
         sleep.sleep(sleeping);
@@ -52,7 +52,22 @@ const start = async function(category) {
 
       let userData = {};
       try {
-        const url = `https://www.instagram.com/${user.Username}`;
+        const checkUserUrl = `https://www.instagram.com/graphql/query/?query_hash=aec5501414615eca36a9acf075655b1e&variables={"user_id":"${user.UserId}","include_chaining":true,"include_reel":true,"include_suggested_users":false,"include_logged_out_extras":false,"include_highlight_reels":false}`;
+        const checkUserResponse = await axios.get(checkUserUrl, {
+          //   proxy: {
+          //     host: proxy.host,
+          //     port: proxy.port,
+          //     auth: {
+          //       username: proxy.user,
+          //       password: proxy.password
+          //     }
+          //   }
+        });
+
+        const userDataCheck = checkUserResponse.data.data.user.reel.user;
+
+        // FD: Use the username we got with the previous request. This is probably newer!
+        const url = `https://www.instagram.com/${userDataCheck.username}`;
         const response = await axios.get(url, {
           //   proxy: {
           //     host: proxy.host,
@@ -85,11 +100,12 @@ const start = async function(category) {
 
         const data = JSON.parse(scriptData);
         userData = data.entry_data.ProfilePage[0].graphql.user;
+        userData.username = userDataCheck.username; // FD: Overwriting the "UsernameChange" with the data from the previous check. The usernames can differ!
         userData.Error = null;
 
         await writeData(user, userData);
       } catch (error) {
-        userData.Error = error.response.status;
+        userData.Error = (error.response) ? error.response.status : error;
         userData.edge_followed_by = {};
         userData.edge_followed_by.count = 0;
         userData.edge_follow = {};
