@@ -65,7 +65,7 @@ const start = async function(purgeData) {
           resumeData();
         } else {
           db.all(
-            "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE UserId = 4044526946 AND Complete = 0 AND Error IS NULL;",
+            "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Chunk = 'J' AND Complete = 0 AND Error IS NULL;",
             (err, results) => {
               if (err) {
                 console.log(err);
@@ -98,7 +98,7 @@ const start = async function(purgeData) {
             console.log(`Post for shortcode ${resume.Shortcode} not found...`);
 
             db.all(
-              "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE UserId = 4044526946 AND Complete = 0 AND Error IS NULL;",
+              "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Chunk = 'J' AND Complete = 0 AND Error IS NULL;",
               (err, results) => {
                 if (err) {
                   console.log(err);
@@ -145,7 +145,7 @@ const start = async function(purgeData) {
     // db.run(`DELETE FROM Resume WHERE Shortcode = "${postInfo.Shortcode}`);
 
     db.all(
-      "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE UserId = 4044526946 AND Complete = 0 AND Error IS NULL;",
+      "SELECT Shortcode, UserId, Username, UserFullName, Url, ImageUrl, LikesCount, Timestamp, Complete FROM Posts WHERE Chunk = 'J' AND Complete = 0 AND Error IS NULL;",
       (err, results) => {
         if (err) {
           console.log(err);
