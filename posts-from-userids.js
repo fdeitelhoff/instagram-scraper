@@ -1,13 +1,16 @@
 const axios = require("axios");
 // const sleep = require("sleep");
-// const moment = require("moment");
+const moment = require("moment");
 var sqlite3 = require("sqlite3").verbose();
 
 var db = new sqlite3.Database("./data/db.instagram");
 
 const start = async function () {
-        // "10403237330"
-    const userIds = [ "14773754174", "265400016", "1487897728", "14697384922" ];
+    // FD: Additional users (via user id) for Juliette (round 1).
+    // const userIds = [ "9840330480" ]; // "10403237330", "14773754174", "265400016", "1487897728", "14697384922" ];
+
+    // FD: Additional users (via user id) for Juliette (round 2).
+    const userIds = [ "10351318741", "12137607679" ]; 
 
     for (const userId of userIds) {
         console.log(`Getting data for user id ${userId}...`);
@@ -40,14 +43,16 @@ const start = async function () {
                 username: node.owner.username,
                 userFullName: "to be filled",  // FD: Seems I cannot get the data via the above graphq query.
                 url: `https://www.instagram.com/p/${node.shortcode}`,
-                caption: caption.edges[0].node.text,
+                caption: caption.edges[0] !== undefined ? caption.edges[0].node.text : '',
                 imageUrl: node.thumbnail_src,
                 likesCount: node.edge_media_preview_like.count,
                 timestamp: node.taken_at_timestamp
             };
 
+            var dateTime = moment(postInfo.timestamp);
+
             db.run(
-                "INSERT INTO Posts (ShortCode, UserId, Username, UserFullName, Url, ImageUrl, Caption, LikesCount, Timestamp, Complete, Error, Chunk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO Posts (ShortCode, UserId, Username, UserFullName, Url, ImageUrl, Caption, LikesCount, Created, CreatedDate, CreatedTime, Complete, Error, Chunk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     postInfo.shortcode,
                     postInfo.userid,
@@ -58,11 +63,20 @@ const start = async function () {
                     postInfo.caption,
                     postInfo.likesCount,
                     postInfo.timestamp,
+                    dateTime.format("YYYY-MM-DD"),
+                    dateTime.format("HH:mm:ss"),
                     0,
                     null,
-                    "J"
+                    "J2"
                 ]
             );
+
+            // db.run("UPDATE Posts SET Caption = ? WHERE Shortcode = ? AND Caption IS NULL;", 
+            //     [
+            //         postInfo.caption,
+            //         postInfo.shortcode
+            //     ]
+            // );
         }
 
         if (pageInfo.has_next_page) {
