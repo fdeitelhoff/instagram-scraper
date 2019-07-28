@@ -204,7 +204,7 @@ const start = async function(purgeData) {
       db.run(
         `UPDATE Posts SET Complete = 1 WHERE Shortcode = "${post.Shortcode}"`
       );
-      i++;
+      //i++;
     }
   }
 
