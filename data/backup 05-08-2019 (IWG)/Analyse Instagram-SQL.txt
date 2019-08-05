@@ -1,0 +1,13 @@
+/* %" OR Text Like "% */
+
+SELECT
+        *,
+        (case when Text Like "%we%" OR Text Like "%us%" OR Text Like "%together%" OR Text Like "%wir%" OR Text Like "%uns%" OR Text Like "%gemeinsam%" OR Text Like "%strong%" OR Text Like "%can't wait%" OR Text Like "%don't stop%" OR Text Like "%let's do%" OR Text Like "%dabei%" OR Text Like "%there%" OR Text Like "%with you%" OR Text Like "%see you%" OR Text Like "%@%" then 1 else 0 end) as GC,
+        (case when Text Like "%cool%" OR Text Like "%super%" OR Text Like "%💚%" OR Text Like "%🙏%" OR Text Like "%🌍%" OR Text Like "%❤️%" OR Text Like "%♥️%" OR Text Like "%👌%" OR Text Like "%👍%" OR Text Like "%🤗%" OR Text Like "%❤️%" OR Text Like "%😭%" OR Text Like "%😎%" OR Text Like "%💋%" OR Text Like "%✊%" OR Text Like "%😣%" OR Text Like "%😤%" OR Text Like "%🐾%" OR Text Like "%😍%" OR Text Like "%😊%" OR Text Like "%🥰%" OR Text Like "%💖%" OR Text Like "%💜%" OR Text Like "%🌎%" OR Text Like "%🌍%" OR Text Like "%🌏%" OR Text Like "%❣%" OR Text Like "%🕊%" OR Text Like "%💫%" OR Text Like "%🤘%" OR Text Like "%💯%" OR Text Like "%🏆%" OR Text Like "%💎%" OR Text Like "%🍀%" OR Text Like "%😢%" OR Text Like "%🦋%" OR Text Like "%🌷%" OR Text Like "%☝️%" OR Text Like "%⭐️%" OR Text Like "%yes%" OR Text Like "%stupid%" OR Text Like "%no%" OR Text Like "%fuck%" OR Text Like "%dumb%" OR Text Like "%cunt%" OR Text Like "%asshole%" OR Text Like "%bitch%" OR Text Like "%shit%" OR Text Like "%useless%" OR Text Like "%rock%" OR Text Like "%hero%" then 1 else 0 end) as EA,
+        (case when Text Like "%👏%" OR Text Like "%💪%" OR Text Like "%👍🏻%" OR Text Like "%thank%" OR Text Like "%thanks%" OR Text Like "%legend%" then 1 else 0 end) as SO
+From 
+        Comments
+WHERE 
+        Shortcode = 'BuYFvVGhSbX'
+OR 
+        Shortcode = 'BxrFFNhCMxc';
