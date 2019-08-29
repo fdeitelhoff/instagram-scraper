@@ -26,7 +26,7 @@ const start = async function() {
           await startResumeData();
         } else {
           db.all(
-            "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0 AND HashtagSearch = 'sokofuture';",
+            "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0 AND HashtagSearch = 'sokofuture' AND Error IS NULL;",
             async (err, results) => {
               if (err) {
                 console.log(err);
@@ -62,7 +62,7 @@ const start = async function() {
     );
 
     db.all(
-      "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0 AND HashtagSearch = 'sokofuture';",
+      "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0 AND HashtagSearch = 'sokofuture' AND Error IS NULL;",
       async (err, results) => {
         if (err) {
           console.log(err);

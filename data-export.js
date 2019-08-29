@@ -20,7 +20,7 @@ const start = async function() {
   );
 
   function getRefPoster(posts) {
-    const regex = /\s(@[a-z.0-9_-]+)\s/gim;
+    const regex = /\s*(@[a-zA-ZöÖäÄüÜ.0-9_-]+)\s*/gim;
 
     clearData("./data/author_post_refpost.csv");
 
@@ -29,16 +29,10 @@ const start = async function() {
     for (const post of posts) {
       console.log(`Processing post ${post.Shortcode}...`);
 
-      if ((m = regex.exec(post.Caption) === null)) {
-        console.log(`Saving non-match for post ${post.Shortcode}...`);
-
-        saveData(
-          "./data/author_post_refpost.csv",
-          `${post.Username};${post.Shortcode};-`
-        );
-      }
-
+      let match = false;
       while ((m = regex.exec(post.Caption)) !== null) {
+        match = true;
+
         // This is necessary to avoid infinite loops with zero-width matches
         if (m.index === regex.lastIndex) {
           regex.lastIndex++;
@@ -51,11 +45,20 @@ const start = async function() {
           `${post.Username};${post.Shortcode};${m[1]}`
         );
       }
+
+      if (!match) {
+        console.log(`Saving non-match for post ${post.Shortcode}...`);
+
+        saveData(
+          "./data/author_post_refpost.csv",
+          `${post.Username};${post.Shortcode};-`
+        );
+      }
     }
   }
 
   function getRefHashtags(posts) {
-    const regex = /\s(#[a-z0-9_-]+)\s/gim;
+    const regex = /\s*(#[a-zA-ZöÖäÄüÜ0-9_-]+)\s*/gim;
 
     clearData("./data/author_post_refhashtags.csv");
 
@@ -64,16 +67,10 @@ const start = async function() {
     for (const post of posts) {
       console.log(`Processing post ${post.Shortcode}...`);
 
-      if ((m = regex.exec(post.Caption) === null)) {
-        console.log(`Saving non-match for post ${post.Shortcode}...`);
-
-        saveData(
-          "./data/author_post_refhashtags.csv",
-          `${post.Username};${post.Shortcode};-`
-        );
-      }
-
+      let match = false;
       while ((m = regex.exec(post.Caption)) !== null) {
+        match = true;
+
         // This is necessary to avoid infinite loops with zero-width matches
         if (m.index === regex.lastIndex) {
           regex.lastIndex++;
@@ -84,6 +81,15 @@ const start = async function() {
         saveData(
           "./data/author_post_refhashtags.csv",
           `${post.Username};${post.Shortcode};${m[1]}`
+        );
+      }
+
+      if (!match) {
+        console.log(`Saving non-match for post ${post.Shortcode}...`);
+
+        saveData(
+          "./data/author_post_refhashtags.csv",
+          `${post.Username};${post.Shortcode};-`
         );
       }
     }
