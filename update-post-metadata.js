@@ -5,7 +5,7 @@ var sqlite3 = require("sqlite3").verbose();
 
 var db = new sqlite3.Database("./data/db.instagram");
 
-// db.on("trace", sql => {
+// db.on("profile", sql => {
 //   console.log(`Database trace: ${sql}`);
 // });
 
@@ -16,25 +16,25 @@ const start = async function() {
   let resume = {};
   db.get(
     "SELECT Shortcode, Type, EndCursor FROM Resume WHERE Type = 'Metadata' ORDER BY Timestamp DESC LIMIT 1;",
-    (err, results) => {
+    async (err, results) => {
       if (err) {
         console.log(err);
       } else {
         resume = results;
 
         if (resume) {
-          startResumeData();
+          await startResumeData();
         } else {
           db.all(
-            "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0;",
-            (err, results) => {
+            "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0 AND HashtagSearch = 'sokofuture';",
+            async (err, results) => {
               if (err) {
                 console.log(err);
               } else {
                 // console.log(results);
                 userIds = results;
 
-                getMetadata();
+                await getMetadata();
               }
             }
           );
@@ -43,7 +43,7 @@ const start = async function() {
     }
   );
 
-  async function startResumeData(postInfo) {
+  async function startResumeData() {
     console.log(
       `Resuming userid ${resume.Shortcode} for Type ${resume.Type} with End Cursor ${resume.EndCursor}`
     );
@@ -52,29 +52,32 @@ const start = async function() {
       await getPostData(resume.Shortcode);
     }
 
-    console.log(`Updating status for post ${postInfo.Shortcode}...`);
+    console.log(`Updating status for post ${resume.Shortcode}...`);
     db.run(
-      `UPDATE Posts SET MetadataUpdate = 1 WHERE Shortcode = "${postInfo.Shortcode}"`
+      `UPDATE Posts SET MetadataUpdate = 1 WHERE Shortcode = "${resume.Shortcode}"`
     );
 
     console.log(
       `Resuming done... deleting resume info and start scraping again...`
     );
-    // db.run(`DELETE FROM Resume WHERE Shortcode = "${postInfo.Shortcode}`);
 
     db.all(
-      "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0;",
-      (err, results) => {
+      "SELECT DISTINCT UserId FROM Posts WHERE MetadataUpdate = 0 AND HashtagSearch = 'sokofuture';",
+      async (err, results) => {
         if (err) {
           console.log(err);
         } else {
           // console.log(results);
           userIds = results;
 
-          deleteResumeData(resume.Shortcode, resume.Type, resume.EndCursor);
+          await deleteResumeData(
+            resume.Shortcode,
+            resume.Type,
+            resume.EndCursor
+          );
           resume = undefined; // FD: For the safety... accessing should result in an error.
 
-          getMetadata();
+          await getMetadata();
         }
       }
     );
@@ -161,7 +164,7 @@ const start = async function() {
                 );
 
                 db.run(
-                  "INSERT INTO Posts (ShortCode, UserId, Username, UserFullName, Url, ImageUrl, Caption, LikesCount, Created, CreatedDate, CreatedTime, HashtagSearch, IsVideo, VideoViewCount, VideoUrl, TrackingToken, TakenAt, Complete, MetadataUpdate, Error, Chunk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  "INSERT INTO Posts (ShortCode, UserId, Username, UserFullName, Url, ImageUrl, Caption, LikesCount, Created, CreatedDate, CreatedTime, HashtagSearch, IsVideo, VideoViewCount, VideoUrl, TrackingToken, TakenAt, Complete, MetadataUpdate, Error, Chunk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                   [
                     postInfo.shortcode,
                     postInfo.userid,
@@ -184,44 +187,41 @@ const start = async function() {
                     1,
                     null,
                     "J3"
-                  ],
-                  error => {
-                    console.log("insert failed", error);
-                    console.log(
-                      postInfo,
-                      dateTime.format("YYYY-MM-DD"),
-                      dateTime.format("HH:mm:ss")
-                    );
-                  }
+                  ]
+                  //, error => {
+                  //   console.log("insert failed", error);
+                  //   console.log(
+                  //     postInfo,
+                  //     dateTime.format("YYYY-MM-DD"),
+                  //     dateTime.format("HH:mm:ss")
+                  //   );
+                  // }
                 );
               } else {
                 console.log(
                   `Updating existing post ${postInfo.shortcode} for user ${userId}...`
                 );
                 db.run(
-                  `UPDATE Posts SET Username = '${postInfo.username}', 
-                                    UserFullName = '${
-                                      postInfo.userFullName
-                                    }', Caption = '${postInfo.caption}',
-                                    LikesCount = ${
-                                      postInfo.likesCount
-                                    }, CreatedDate = ${dateTime.format(
-                    "YYYY-MM-DD"
-                  )},
-                                    CreatedTime = ${dateTime.format(
-                                      "HH:mm:ss"
-                                    )}, IsVideo = ${postInfo.isVideo},
-                                    VideoViewCount = ${
-                                      postInfo.videoViewCount
-                                    }, VideoUrl = '${
-                    postInfo.videoUrl
-                  }', TrackingToken = '${postInfo.trackingToken}', TakenAt = '${
-                    postInfo.takenAt
-                  }', MetadataUpdate = 1 WHERE Shortcode = '${
+                  `UPDATE Posts SET Username = ?, 
+                                    UserFullName = ?, Caption = ?,
+                                    LikesCount = ?, CreatedDate = ?,
+                                    CreatedTime = ?, IsVideo = ?,
+                                    VideoViewCount = ?, VideoUrl = ?, TrackingToken = ?, TakenAt = ?, MetadataUpdate = 1 WHERE Shortcode = ?`,
+                  [
+                    postInfo.username,
+                    postInfo.userFullName,
+                    postInfo.caption,
+                    postInfo.likesCount,
+                    dateTime.format("YYYY-MM-DD"),
+                    dateTime.format("HH:mm:ss"),
+                    postInfo.isVideo,
+                    postInfo.videoViewCount,
+                    postInfo.videoUrl,
+                    postInfo.trackingToken,
+                    postInfo.takenAt,
                     postInfo.shortcode
-                  }'`
+                  ]
                 );
-                return;
               }
             }
           }
