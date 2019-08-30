@@ -119,16 +119,26 @@ const start = async function() {
       await createResumeData(userId, "Metadata", endCursor);
 
       const response = await axios.get(postsUrl);
+
+      // FD: TODO: Die ganzen interessanten Daten noch rausholen.
+      // Location, Tagged Users, Sponsor?
+      // Location und Tagged Users in eigene Tabelle verschieben!
+
+      console.log(
+        response.data.data.user.edge_owner_to_timeline_media.edges[0]
+      );
+      return;
+
+      // FD: TODO: An dieser Stelle prüfen, ob der User überhaupt Daten zurückliefert --> Privater Account?
+      // {"data":{"user":{"edge_owner_to_timeline_media":{"count":52,"page_info":{"has_next_page":false,"end_cursor":null},"edges":[]}}},"status":"ok"}
+      // Keine Daten aber status OK! --> Was dann machen? Private Flag sollte ich noch haben und dann kann ich alle Beiträge von ihm markieren (complete, metadata, private)
+
       const edges = response.data.data.user.edge_owner_to_timeline_media.edges;
       const pageInfo =
         response.data.data.user.edge_owner_to_timeline_media.page_info;
 
       for (const post of edges) {
         const node = post.node;
-
-        console.log(
-          `Getting data for post ${node.shortcode} for user id ${userId}...`
-        );
 
         const caption = node.edge_media_to_caption; // FD: New approach for the "first comment".
 
@@ -149,6 +159,23 @@ const start = async function() {
           trackingToken: node.tracking_token,
           takenAt: node.taken_at_timestamp
         };
+
+        // FD: Todo: Richtige Benutzerdaten holen. UserFullName fehlt mir immer noch.
+        // Dann kann ich auch direkt eine User-Tabelle damit füllen.
+
+        // FD: Prüfen, ob der Post überhaupt noch existiert.
+        // TODO: Das scheint noch nicht so richtig zu funktionieren!
+        const error = await checkPostError(postInfo);
+        if (error) {
+          console.log(
+            `Error for post ${postInfo.shortcode} detected... skipping...`
+          );
+          continue;
+        }
+
+        console.log(
+          `Getting data for post ${node.shortcode} for user id ${userId}...`
+        );
 
         var dateTime = moment(postInfo.timestamp);
 
@@ -203,10 +230,18 @@ const start = async function() {
                 );
                 db.run(
                   `UPDATE Posts SET Username = ?, 
-                                    UserFullName = ?, Caption = ?,
-                                    LikesCount = ?, CreatedDate = ?,
-                                    CreatedTime = ?, IsVideo = ?,
-                                    VideoViewCount = ?, VideoUrl = ?, TrackingToken = ?, TakenAt = ?, MetadataUpdate = 1 WHERE Shortcode = ?`,
+                                    UserFullName = ?,
+                                    Caption = ?,
+                                    LikesCount = ?,
+                                    CreatedDate = ?,
+                                    CreatedTime = ?,
+                                    IsVideo = ?,
+                                    VideoViewCount = ?,
+                                    VideoUrl = ?,
+                                    TrackingToken = ?,
+                                    TakenAt = ?,
+                                    MetadataUpdate = 1
+                                WHERE Shortcode = ?`,
                   [
                     postInfo.username,
                     postInfo.userFullName,
@@ -239,6 +274,20 @@ const start = async function() {
       console.log(`Waiting for 300 secs, due to http error...`);
       sleep.sleep(300);
       await getPostData(userId, hasNextPage, endCursor);
+    }
+  }
+
+  async function checkPostError(postInfo) {
+    try {
+      await axios.get(postInfo.Url);
+
+      return false;
+    } catch (error) {
+      db.run(
+        `UPDATE Posts SET Error = ${error.response.status} WHERE Shortcode = "${postInfo.shortcode}"`
+      );
+
+      return true;
     }
   }
 };
